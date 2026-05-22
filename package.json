@@ -1,0 +1,60 @@
+{
+  "name": "ai-chat-backend",
+  "version": "1.0.0",
+  "description": "AppNation AI Chat System Backend with Feature Flagging",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:studio": "prisma studio",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
+  },
+  "keywords": ["chat", "ai", "feature-flags", "sse"],
+  "author": "Mustafa Ozdal",
+  "license": "MIT",
+  "dependencies": {
+    "@ai-sdk/openai": "^1.0.5",
+    "@prisma/client": "^5.22.0",
+    "ai": "^4.0.18",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.3.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.9.0",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
+    "jest": "^29.7.0",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint": "^8.57.1"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

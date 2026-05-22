@@ -1,0 +1,63 @@
+// Prisma schema for AI Chat System
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  tier      UserTier @default(FREE)
+  chats     Chat[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Chat {
+  id        String    @id @default(uuid())
+  title     String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  chatId    String
+  chat      Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      MessageRole
+  content   String      @db.Text
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  // Postgres can scan a btree index in either direction, so one index covers
+  // both ascending (history view) and descending (recent-N for context) reads.
+  @@index([chatId, createdAt])
+}
+
+enum UserTier {
+  FREE
+  STARTUP
+  ENTERPRISE
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}

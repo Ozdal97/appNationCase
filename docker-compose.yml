@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_chat
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_chat?schema=public
+      DATABASE_POOL_MAX: 10
+      # Demo-only — generate a real one with: openssl rand -base64 48
+      JWT_SECRET: 'demo-jwt-secret-rotate-me-when-deploying-please'
+      JWT_EXPIRES_IN: 24h
+      FIREBASE_APP_CHECK_ENABLED: 'false'
+      CORS_ORIGINS: 'http://localhost:8080'
+      STREAMING_ENABLED: 'true'
+      PAGINATION_LIMIT: '20'
+      AI_TOOLS_ENABLED: 'true'
+      CHAT_HISTORY_ENABLED: 'true'
+      RATE_LIMIT_PER_MINUTE: '60'
+      CHAT_HISTORY_LIMITED_COUNT: '10'
+      AI_PROVIDER: mock
+      ADMIN_TOKEN: dev-admin-token
+      DEMO_LOGIN_ENABLED: 'true'
+      RATE_LIMIT_STORE: memory
+      # Switch to redis + uncomment the redis service below for multi-instance setups.
+      # RATE_LIMIT_STORE: redis
+      # REDIS_URL: redis://redis:6379
+    ports:
+      - '3000:3000'
+
+  # Uncomment to use the Redis-backed rate limiter (npm i ioredis + RATE_LIMIT_STORE=redis).
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - '6379:6379'
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '8080:8080'
+
+volumes:
+  postgres_data:

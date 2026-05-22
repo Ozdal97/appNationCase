@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AppNation Chat — Demo</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>AppNation Chat <small>demo client</small></h1>
+    <div class="conn">
+      <label>API base
+        <input id="apiBase" value="http://localhost:3000" />
+      </label>
+      <label>Admin token
+        <input id="adminToken" value="dev-admin-token" />
+      </label>
+      <button id="connect">Connect</button>
+      <span id="userBadge" class="badge" hidden></span>
+      <span id="health" class="badge">offline</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="section-header">
+        <h2>Chats</h2>
+        <div style="display:flex; gap:4px;">
+          <button id="newChat" title="New chat">+ New</button>
+          <button id="refreshChats" title="Reload">↻</button>
+        </div>
+      </div>
+      <ul id="chatList" class="chat-list"></ul>
+      <div id="paginationInfo" class="muted small"></div>
+    </aside>
+
+    <section class="conversation" id="conversationPanel">
+      <div class="section-header" id="conversationHeader">
+        <h2 id="chatTitle">Pick a chat →</h2>
+        <span id="historyMeta" class="muted small"></span>
+      </div>
+      <ol id="messages" class="messages"></ol>
+      <form id="composer" class="composer" hidden>
+        <textarea id="prompt" rows="2" placeholder="Ask anything… e.g. What is the weather in Istanbul?"></textarea>
+        <button type="submit">Send</button>
+      </form>
+      <pre id="eventLog" class="event-log" hidden></pre>
+
+      <div class="empty-state" id="emptyState" hidden>
+        <div class="empty-state-card">
+          <h2 id="emptyHeadline">No chats yet</h2>
+          <p class="muted">Create your first conversation to get started.</p>
+          <button id="emptyNewChat" type="button" class="big-new-chat">+ New chat</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="flagpanel">
+      <h2>Feature flags</h2>
+      <div id="flags"></div>
+      <p class="muted small">Toggles call <code>PATCH /api/admin/feature-flags/:key</code>. Changes take effect on the next request — no redeploy.</p>
+    </aside>
+  </main>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>

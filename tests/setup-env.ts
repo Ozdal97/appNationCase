@@ -1,0 +1,10 @@
+process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = 'error';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test?schema=public';
+process.env.JWT_SECRET = 'test-secret-key-please-make-this-32-chars-or-more';
+process.env.STREAMING_ENABLED = 'true';
+process.env.PAGINATION_LIMIT = '20';
+process.env.AI_TOOLS_ENABLED = 'true';
+process.env.CHAT_HISTORY_ENABLED = 'true';
+process.env.RATE_LIMIT_PER_MINUTE = '1000';
+process.env.CHAT_HISTORY_LIMITED_COUNT = '5';

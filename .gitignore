@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+.idea/
+.vscode/
+.claude/
+*.tsbuildinfo
+prisma/migrations/dev.db*
+# Confidential case PDF — never commit
+*.pdf
