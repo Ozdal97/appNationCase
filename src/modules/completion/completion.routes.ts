@@ -10,6 +10,7 @@ import {
   createRateLimiter,
   RateLimiterStore,
 } from '../../middleware/rate-limit.middleware';
+import { FeatureFlagReader } from '../../feature-flags/feature-flag.types';
 import {
   chatIdParamSchema,
   completionBodySchema,
@@ -17,6 +18,7 @@ import {
 
 export function createCompletionRouter(
   controller: CompletionController,
+  flags: FeatureFlagReader,
   rateLimiterStore?: RateLimiterStore,
 ): Router {
   const router: Router = Router({ mergeParams: true });
@@ -24,7 +26,7 @@ export function createCompletionRouter(
     appCheckMiddleware,
     authMiddleware,
     clientDetectionMiddleware,
-    createRateLimiter(rateLimiterStore),
+    createRateLimiter(flags, rateLimiterStore),
   ];
 
   router.post(

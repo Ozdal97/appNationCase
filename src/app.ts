@@ -71,8 +71,8 @@ export function createApp(container?: AppContainer): Express {
   const chatController = new ChatController(c.services.chat);
   const completionController = new CompletionController(c.services.completion);
 
-  app.use('/api/chats', createChatRouter(chatController, c.rateLimiterStore));
-  app.use('/api/chats', createCompletionRouter(completionController, c.rateLimiterStore));
+  app.use('/api/chats', createChatRouter(chatController, c.featureFlags, c.rateLimiterStore));
+  app.use('/api/chats', createCompletionRouter(completionController, c.featureFlags, c.rateLimiterStore));
   app.use('/api/admin', createAdminRouter());
 
   // Demo-only mock-login route. Opt-in via DEMO_LOGIN_ENABLED so production

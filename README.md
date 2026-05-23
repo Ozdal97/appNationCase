@@ -14,7 +14,7 @@ The implementation deliberately demonstrates every concept from the brief:
 - **SSE streaming** with `start`/`thinking`/`token`/`tool_execution`/`done`/`error` events
 - **Mock AI** with one mocked tool (`getCurrentWeather`)
 - **Cursor-based pagination**, structured logging (pino), rate limiting, graceful shutdown
-- **Unit + integration tests** (35 tests, jest + supertest) covering the flag service, strategies, all three endpoints, auth, validation, rate limit, and admin routes
+- **Unit + integration tests** (50 tests, jest + supertest) covering the flag service, strategies, all three endpoints, auth, validation, rate limit, and admin routes
 - **Docker Compose** for one-command setup, including an in-browser demo client at `http://localhost:8080`
 
 ## Quick start (Docker — recommended)
@@ -102,6 +102,16 @@ curl -H "Authorization: Bearer $TOKEN" \
      -d '{"prompt":"hi"}' \
      http://localhost:3000/api/chats/<chatId>/completion
 ```
+
+### Postman collection
+
+Prefer a GUI? Import [`postman_collection.json`](./postman_collection.json) at the repo root — every endpoint above is pre-wired with the correct headers, request bodies, and runtime variables.
+
+- **Auto-login**: the `Auth / dev login` request runs a tiny test script that pulls `data.token` from the response and stores it in the collection-level `{{token}}` variable. Every other request authenticates from that variable, so there's no JWT to copy.
+- **Auto-chatId**: `Chats / List chats` and `Chats / Create chat` both save the first/created `id` into `{{chatId}}`, so the history and completion requests work out of the box.
+- **Flag flips inline**: the `Admin` folder includes ready-made PATCH requests (e.g. `STREAMING_ENABLED → false`) so you can flip a flag and immediately re-run the same completion request to see the strategy switch.
+
+Run order on a fresh boot: `Auth / dev login` → `Chats / Create chat` → anything else.
 
 ## Architecture
 
@@ -302,5 +312,4 @@ If you'd rather review the backend on its own, ignore `client/` entirely — eve
 
 - Replace the in-memory rate limiter with Redis for multi-instance deployments.
 - Plug in the Vercel AI SDK in `AIService` (the interface is already shaped for it).
-- Add `requireFeature('STREAMING_ENABLED')` as a route-specific gate if the requirement becomes "no streaming endpoint when flag is off" rather than "JSON fallback".
 - Wire `FeatureFlagService.on('change', …)` to refresh worker caches / push to clients via WS.

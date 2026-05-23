@@ -1,5 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
-import { featureFlags } from '../feature-flags/feature-flag.service';
+import { FeatureFlagReader } from '../feature-flags/feature-flag.types';
 import { TooManyRequestsError } from '../errors/app-error';
 import { logger } from '../core/logger';
 import { RateLimiterStore } from './rate-limit/rate-limiter-store';
@@ -16,17 +16,24 @@ const WINDOW_MS = 60_000;
  * config changes apply immediately. Persistence is delegated to the injected
  * {@link RateLimiterStore} (memory by default, Redis available).
  *
+ * Flag access is via the injected {@link FeatureFlagReader} (ISP — read-only
+ * view of the flag store), so the middleware doesn't reach into the singleton
+ * directly and stays trivially fake-able in tests.
+ *
  * The container wires a single store instance and passes it to every route's
  * limiter so buckets are shared across mount points.
  */
-export function createRateLimiter(store: RateLimiterStore = new InMemoryRateLimiterStore()): RequestHandler {
+export function createRateLimiter(
+  flags: FeatureFlagReader,
+  store: RateLimiterStore = new InMemoryRateLimiterStore(),
+): RequestHandler {
   return async function rateLimit(
     req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> {
     try {
-      const limit: number = featureFlags.get('RATE_LIMIT_PER_MINUTE');
+      const limit: number = flags.get('RATE_LIMIT_PER_MINUTE');
       const key: string = req.user?.id ?? req.ip ?? 'anon';
 
       const { count, resetAt } = await store.hit(key, WINDOW_MS);

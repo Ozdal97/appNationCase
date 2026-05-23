@@ -1,0 +1,362 @@
+{
+  "info": {
+    "name": "AppNation — AI Chat Backend",
+    "description": "Case study backend: 3 chat endpoints + admin flag management + dev login. Auto-mints a JWT and stores chatId so requests are runnable top-to-bottom with zero copy-paste.\n\nUsage:\n1. `docker compose up --build` (or `npm run dev`)\n2. Run `Auth / dev login` once — token saved to {{token}}.\n3. Run `Chats / create chat` once — chatId saved to {{chatId}}.\n4. Any other request now works out of the box.\n\nVariables (Collection scope):\n- baseUrl: http://localhost:3000\n- adminToken: dev-admin-token (matches .env.example)\n- token: auto-set by dev login\n- chatId: auto-set by list/create",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "dev-admin-token", "type": "string" },
+    { "key": "chatId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "dev login (mints JWT, saves to {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const token = body && body.data && body.data.token;",
+                  "if (token) {",
+                  "  pm.collectionVariables.set('token', token);",
+                  "  console.log('saved token to {{token}}');",
+                  "} else {",
+                  "  console.error('no token in response — is DEMO_LOGIN_ENABLED=true?');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dev", "login"]
+            },
+            "description": "Mints a JWT for a demo user. Guarded by DEMO_LOGIN_ENABLED=true. Test script extracts data.token and stores it in the collection-level {{token}} variable, so every subsequent request authenticates automatically."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Liveness probe + database probe + current feature-flag snapshot."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Chats",
+      "item": [
+        {
+          "name": "List chats (saves first id to {{chatId}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const first = body && body.data && body.data.items && body.data.items[0];",
+                  "if (first && first.id) {",
+                  "  pm.collectionVariables.set('chatId', first.id);",
+                  "  console.log('saved chatId to {{chatId}} =', first.id);",
+                  "} else {",
+                  "  console.log('no chats yet — run \"create chat\" first');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Cursor-paginated chat list. Honours PAGINATION_LIMIT; mobile clients (X-Client-Type: mobile) are capped further to 15."
+          }
+        },
+        {
+          "name": "List chats — mobile (X-Client-Type)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Client-Type", "value": "mobile" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats"],
+              "query": [{ "key": "limit", "value": "20" }]
+            },
+            "description": "Same endpoint with the mobile client header set — pagination is tightened to ≤15 regardless of PAGINATION_LIMIT."
+          }
+        },
+        {
+          "name": "Create chat (saves id to {{chatId}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201 or 200', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "const id = body && body.data && body.data.id;",
+                  "if (id) {",
+                  "  pm.collectionVariables.set('chatId', id);",
+                  "  console.log('saved chatId to {{chatId}} =', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman demo chat\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats"]
+            },
+            "description": "Creates a new chat. Added so reviewers can seed conversations without touching the database."
+          }
+        },
+        {
+          "name": "Get history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "history"]
+            },
+            "description": "Full history when CHAT_HISTORY_ENABLED=true; last N (CHAT_HISTORY_LIMITED_COUNT) otherwise. Strategy is selected by the HistoryStrategyFactory based on the flag + client type."
+          }
+        },
+        {
+          "name": "Get history — mobile (forced limited)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Client-Type", "value": "mobile" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "history"]
+            },
+            "description": "Mobile clients always get LimitedHistoryStrategy regardless of CHAT_HISTORY_ENABLED. Response meta.strategy should be \"limited\"."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Completion",
+      "item": [
+        {
+          "name": "Completion — streaming (SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Hello, who are you?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/completion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "completion"]
+            },
+            "description": "When STREAMING_ENABLED=true the server emits SSE: start → thinking → token* → done. Postman v10.21+ supports SSE; if your client doesn't, see the JSON fallback below."
+          }
+        },
+        {
+          "name": "Completion — weather tool (AI_TOOLS_ENABLED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"What is the weather in Istanbul?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/completion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "completion"]
+            },
+            "description": "Triggers the mock getCurrentWeather tool when AI_TOOLS_ENABLED=true. SSE adds a tool_execution event before tokens. Toggle AI_TOOLS_ENABLED off via the admin endpoints below to see the same prompt skip the tool path."
+          }
+        },
+        {
+          "name": "Completion — JSON (after flipping STREAMING_ENABLED off)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Reply in one short sentence.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/completion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "completion"]
+            },
+            "description": "Same endpoint, JSON shape. To exercise this, first run `Admin / Patch STREAMING_ENABLED → false`. The CompletionStrategyFactory re-reads the flag every request, so no restart is needed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Admin (runtime flag flipping)",
+      "item": [
+        {
+          "name": "Get all feature flags",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "x-admin-token", "value": "{{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags"]
+            },
+            "description": "Snapshot of every flag with its current value. Gated by x-admin-token (matches ADMIN_TOKEN env var)."
+          }
+        },
+        {
+          "name": "Patch STREAMING_ENABLED → false",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "x-admin-token", "value": "{{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"value\": false\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags/STREAMING_ENABLED",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags", "STREAMING_ENABLED"]
+            },
+            "description": "Flip streaming off. Next completion request returns JSON instead of SSE — same endpoint, different strategy."
+          }
+        },
+        {
+          "name": "Patch STREAMING_ENABLED → true",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "x-admin-token", "value": "{{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"value\": true\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags/STREAMING_ENABLED",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags", "STREAMING_ENABLED"]
+            },
+            "description": "Flip streaming back on."
+          }
+        },
+        {
+          "name": "Patch AI_TOOLS_ENABLED → true",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "x-admin-token", "value": "{{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"value\": true\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags/AI_TOOLS_ENABLED",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags", "AI_TOOLS_ENABLED"]
+            },
+            "description": "Enables the mock weather tool path inside the streaming completion."
+          }
+        },
+        {
+          "name": "Patch PAGINATION_LIMIT (number validator)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "x-admin-token", "value": "{{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"value\": 25\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags/PAGINATION_LIMIT",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags", "PAGINATION_LIMIT"]
+            },
+            "description": "PAGINATION_LIMIT is validated as an integer between 10 and 100. Try value: 5 — request will be rejected and the previous value preserved (per-flag validator)."
+          }
+        },
+        {
+          "name": "Bulk reload",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "x-admin-token", "value": "{{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"STREAMING_ENABLED\": true,\n  \"AI_TOOLS_ENABLED\": false,\n  \"PAGINATION_LIMIT\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/feature-flags/reload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "feature-flags", "reload"]
+            },
+            "description": "Atomic multi-flag update. Each value passes its per-flag validator before being applied; invalid values are skipped and logged."
+          }
+        }
+      ]
+    }
+  ]
+}

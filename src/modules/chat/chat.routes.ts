@@ -6,6 +6,7 @@ import { clientDetectionMiddleware } from '../../middleware/client-detection.mid
 import { validate } from '../../middleware/validation.middleware';
 import { asyncHandler } from '../../middleware/error-handler.middleware';
 import { createRateLimiter, RateLimiterStore } from '../../middleware/rate-limit.middleware';
+import { FeatureFlagReader } from '../../feature-flags/feature-flag.types';
 import {
   chatIdParamSchema,
   createChatBodySchema,
@@ -15,6 +16,7 @@ import {
 
 export function createChatRouter(
   controller: ChatController,
+  flags: FeatureFlagReader,
   rateLimiterStore?: RateLimiterStore,
 ): Router {
   const router: Router = Router();
@@ -25,7 +27,7 @@ export function createChatRouter(
     appCheckMiddleware,
     authMiddleware,
     clientDetectionMiddleware,
-    createRateLimiter(rateLimiterStore),
+    createRateLimiter(flags, rateLimiterStore),
   ];
 
   router.get(
