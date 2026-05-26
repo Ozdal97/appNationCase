@@ -19,6 +19,7 @@ export interface AppConfig {
   ai: {
     provider: Env['AI_PROVIDER'];
     openaiApiKey?: string;
+    openaiModel: string;
   };
   demo: {
     loginEnabled: boolean;
@@ -69,6 +70,7 @@ export class Config {
       ai: {
         provider: env.AI_PROVIDER,
         openaiApiKey: env.OPENAI_API_KEY,
+        openaiModel: env.OPENAI_MODEL,
       },
       demo: {
         loginEnabled: env.DEMO_LOGIN_ENABLED,

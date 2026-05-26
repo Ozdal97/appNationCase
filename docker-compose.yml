@@ -39,7 +39,11 @@ services:
       CHAT_HISTORY_ENABLED: 'true'
       RATE_LIMIT_PER_MINUTE: '60'
       CHAT_HISTORY_LIMITED_COUNT: '10'
-      AI_PROVIDER: mock
+      # Interpolated from .env at `docker compose up` time so API keys never
+      # get hard-coded into this committed file. Defaults keep it on mock.
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
       ADMIN_TOKEN: dev-admin-token
       DEMO_LOGIN_ENABLED: 'true'
       RATE_LIMIT_STORE: memory

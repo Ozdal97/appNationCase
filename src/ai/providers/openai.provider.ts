@@ -28,27 +28,30 @@ interface SdkToolResult {
   readonly result: unknown;
 }
 
-/**
- * Vercel AI SDK adapter. Same event shape as MockAIProvider so the Strategy
- * layer above doesn't know which provider it's talking to.
- *
- * Activated by setting AI_PROVIDER=vercel and supplying OPENAI_API_KEY.
- */
-export class VercelAIProvider implements AIProvider {
-  readonly name = 'vercel-ai-sdk';
+/** The Vercel AI SDK's model handle returned by `createOpenAI()`. */
+type SdkModel = Parameters<typeof streamText>[0]['model'];
 
-  private static readonly MODEL = 'gpt-4o-mini';
-  private readonly model: ReturnType<ReturnType<typeof createOpenAI>>;
+/**
+ * OpenAI provider via the Vercel AI SDK. Activated with AI_PROVIDER=openai and
+ * OPENAI_API_KEY; model defaults to gpt-5.4-mini (override with OPENAI_MODEL).
+ *
+ * Emits the same event shape as {@link MockAIProvider}, so the Strategy/SSE
+ * layer above is provider-agnostic — swapping mock↔openai is one env var.
+ */
+export class OpenAIProvider implements AIProvider {
+  readonly name: string;
+  private readonly model: SdkModel;
 
   constructor(
     private readonly flags: FeatureFlagReader,
     apiKey: string,
+    model = 'gpt-5.4-mini',
   ) {
     if (!apiKey) {
-      throw new Error('VercelAIProvider requires OPENAI_API_KEY');
+      throw new Error('OpenAIProvider requires OPENAI_API_KEY');
     }
-    const openai = createOpenAI({ apiKey });
-    this.model = openai(VercelAIProvider.MODEL);
+    this.model = createOpenAI({ apiKey })(model);
+    this.name = `openai:${model}`;
   }
 
   async *stream(req: CompletionRequest): AsyncGenerator<AIStreamEvent, void, void> {
@@ -74,7 +77,7 @@ export class VercelAIProvider implements AIProvider {
         };
       } else if (part.type === 'error') {
         const message = part.error instanceof Error ? part.error.message : String(part.error);
-        logger.error('vercel provider stream error', { error: message });
+        logger.error('openai provider stream error', { provider: this.name, error: message });
         throw part.error instanceof Error ? part.error : new Error(message);
       }
       // Other event kinds (reasoning/source/step-start/step-finish/finish) are ignored.

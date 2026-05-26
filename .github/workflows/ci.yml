@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` runs the postinstall `prisma generate` (schema only — no DB needed).
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # The suite runs entirely against in-memory fakes (see tests/helpers/test-app.ts)
+      # and seeds its own env (tests/setup-env.ts), so no Postgres service is required.
+      - name: Test
+        run: npm test

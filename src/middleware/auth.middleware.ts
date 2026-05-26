@@ -34,6 +34,10 @@ export const authMiddleware: RequestHandler = (
     req.user = user;
     next();
   } catch (err: unknown) {
-    next(new UnauthorizedError(err instanceof Error ? err.message : 'Invalid token'));
+    // Don't echo jsonwebtoken's raw messages ("invalid signature", "jwt malformed")
+    // back to clients — surface a generic reason, distinguishing only expiry.
+    const reason: string =
+      err instanceof jwt.TokenExpiredError ? 'Token expired' : 'Invalid token';
+    next(new UnauthorizedError(reason));
   }
 };

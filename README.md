@@ -12,7 +12,7 @@ The implementation deliberately demonstrates every concept from the brief:
 - **Design patterns**: Singleton (Config, Logger, Database, FeatureFlagService), Repository, Service, Strategy (completion + history), Dependency Injection (composition root)
 - **Feature flagging** — typed, validated, hot-reloadable, with EventEmitter change notifications
 - **SSE streaming** with `start`/`thinking`/`token`/`tool_execution`/`done`/`error` events
-- **Mock AI** with one mocked tool (`getCurrentWeather`)
+- **Pluggable AI providers** — `mock` (default, offline) and `openai`, behind one interface, with tool-calling (`getCurrentWeather`)
 - **Cursor-based pagination**, structured logging (pino), rate limiting, graceful shutdown
 - **Unit + integration tests** (50 tests, jest + supertest) covering the flag service, strategies, all three endpoints, auth, validation, rate limit, and admin routes
 - **Docker Compose** for one-command setup, including an in-browser demo client at `http://localhost:8080`
@@ -137,8 +137,9 @@ src/
 │   ├── logging.ts              structured request log
 │   └── error-handler.ts        terminal handler + asyncHandler
 ├── ai/
-│   ├── ai.service.ts           Mock AI (stream + complete) honouring AI_TOOLS_ENABLED
-│   └── tools/weather.tool.ts   getCurrentWeather mock
+│   ├── ai.service.ts           Façade over the active AIProvider (stream + complete)
+│   ├── providers/              mock | openai (behind the AIProvider interface)
+│   └── tools/weather.tool.ts   getCurrentWeather tool (mocked data source)
 ├── modules/
 │   ├── chat/                   Controller → Service → Repository
 │   ├── completion/             Controller → Service → Strategy
@@ -202,6 +203,8 @@ helmet → cors → json body parser → requestContext → logging
                                               ...routes...
                                             notFound → errorHandler
 ```
+
+The brief's note also mentions *feature checks* as route-specific middleware. `createRateLimiter()` is exactly that — a flag-driven (`RATE_LIMIT_PER_MINUTE`) middleware mounted per route, not globally. For hard on/off gating there's also `requireFeature(flag)` (`src/middleware/feature-flag.middleware.ts`), ready to drop into any route chain. None of the five required flags is a pure endpoint gate, though — they switch *behaviour* (SSE↔JSON, full↔limited history), which the brief asks to express via the Strategy pattern rather than by blocking the route.
 
 ### Feature flags
 
@@ -277,14 +280,24 @@ Two seams are Strategy-pattern abstractions so reviewers can verify the case's "
 
 ### AI provider (`AI_PROVIDER`)
 
-The case explicitly allows mocked AI ("AI Completion: Can use mock responses or simple OpenAI integration" in *What You Can Simplify*). We ship both:
+The case lets AI completion be mocked ("AI Completion: Can use mock responses or simple OpenAI integration" in *What You Can Simplify*). We ship the mock as the zero-config default **and** a real OpenAI provider:
 
-| Value     | Implementation        | Notes                                                            |
-|-----------|-----------------------|------------------------------------------------------------------|
-| `mock`    | `MockAIProvider`      | Default. Deterministic, offline, no API key.                     |
-| `vercel`  | `VercelAIProvider`    | Wraps the Vercel AI SDK + `@ai-sdk/openai`. Needs `OPENAI_API_KEY`. |
+| Value    | Implementation    | Notes                                                                       |
+|----------|-------------------|-----------------------------------------------------------------------------|
+| `mock`   | `MockAIProvider`  | Default. Deterministic, offline, no API key — safe for tests/CI/demos.      |
+| `openai` | `OpenAIProvider`  | Live OpenAI via the Vercel AI SDK. Needs `OPENAI_API_KEY` (`OPENAI_MODEL`, default `gpt-5.4-mini`). |
 
-`AIService` is a thin façade over the `AIProvider` interface — switching providers is one constructor argument. Nothing in the streaming/JSON strategy layer changes.
+`AIService` is a thin façade over the `AIProvider` interface, so switching mock↔openai is one env var; nothing in the streaming/JSON strategy layer changes. Real tool-calling (`getCurrentWeather`) is wired and gated by `AI_TOOLS_ENABLED`.
+
+```bash
+# talk to a live model
+AI_PROVIDER=openai  OPENAI_API_KEY=sk-...
+
+# or stay fully offline — no API key, deterministic responses (this is the default)
+AI_PROVIDER=mock
+```
+
+No key handy, reviewing offline, or just don't want to spend tokens? Leave `AI_PROVIDER=mock` (the default) and the whole flow — streaming, tool calls, history, rate limiting — still works end-to-end against deterministic mock responses. Flip to `openai` only when you want live answers; no code or restart of the strategy layer needed beyond re-reading the env.
 
 ### Rate limiter store (`RATE_LIMIT_STORE`)
 
@@ -310,6 +323,7 @@ If you'd rather review the backend on its own, ignore `client/` entirely — eve
 
 ## What I'd add next
 
-- Replace the in-memory rate limiter with Redis for multi-instance deployments.
-- Plug in the Vercel AI SDK in `AIService` (the interface is already shaped for it).
-- Wire `FeatureFlagService.on('change', …)` to refresh worker caches / push to clients via WS.
+- Enforce the JWT `tier` claim (`FREE` / `STARTUP` / `ENTERPRISE`) — per-tier rate limits and feature gating. It's carried through auth today but not yet acted on.
+- Persist runtime feature-flag overrides to Redis/DB so they survive a restart (today they live in memory and re-seed from env on boot).
+- Default the Redis-backed rate limiter on in `docker-compose` for a real multi-instance demo — `RedisRateLimiterStore` is implemented and opt-in via `RATE_LIMIT_STORE=redis`.
+- Wire `FeatureFlagService.on('change', …)` to push flag updates to connected clients over WebSocket.

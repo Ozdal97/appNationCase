@@ -45,8 +45,9 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .default('false'),
 
-  AI_PROVIDER: z.enum(['mock', 'vercel']).default('mock'),
+  AI_PROVIDER: z.enum(['mock', 'openai']).default('mock'),
   OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-5.4-mini'),
 
   RATE_LIMIT_STORE: z.enum(['memory', 'redis']).default('memory'),
   REDIS_URL: z.string().optional(),

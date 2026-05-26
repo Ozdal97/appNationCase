@@ -116,7 +116,7 @@ export class JsonCompletionStrategy implements CompletionStrategy {
         message: { role: 'assistant', content: text },
         toolCalls,
       },
-      meta: { streaming: false, model: 'mock-llm-1' },
+      meta: { streaming: false, model: this.ai.providerName },
     });
 
     return { fullText: text, toolCalls, incomplete: false };

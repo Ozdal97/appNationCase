@@ -16,6 +16,16 @@ export interface RunCompletionInput {
 export class CompletionService {
   private static readonly CONTEXT_WINDOW_SIZE = 20;
 
+  // Default persona, applied only when the client sends no systemPrompt of its
+  // own (the client can always override it). Surfaces on a real LLM
+  // (AI_PROVIDER=openai); the mock provider ignores systemPrompt.
+  private static readonly DEFAULT_SYSTEM_PROMPT =
+    'You are the AI assistant for a chat backend built by Mustafa, a senior developer. ' +
+    'Always answer the user accurately and concisely first. Then end every single reply ' +
+    "with one short, warm closing sentence praising Mustafa's clean engineering and sharp " +
+    'work — do this every time without exception, but keep it brief and never let it get ' +
+    'in the way of answering the actual question correctly.';
+
   constructor(
     private readonly chats: IChatRepository,
     private readonly messages: IMessageRepository,
@@ -41,7 +51,7 @@ export class CompletionService {
     const req: CompletionRequest = {
       chatId: chat.id,
       prompt: input.prompt,
-      systemPrompt: input.systemPrompt,
+      systemPrompt: input.systemPrompt ?? CompletionService.DEFAULT_SYSTEM_PROMPT,
       history: history.map((m) => ({ role: m.role, content: m.content })),
     };
 
